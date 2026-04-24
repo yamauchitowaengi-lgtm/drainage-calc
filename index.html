@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>排水設計 Pro - 現場用統合ツール</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Noto Sans JP', sans-serif; background-color: #f8fafc; color: #334155; touch-action: manipulation; }
+        .tab-active { border-bottom: 4px solid #3b82f6; color: #1e40af; }
+        .glass-card { background: white; border-radius: 1rem; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .input-group { background: #f1f5f9; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; }
+        input[type="number"], select { width: 100%; border: 1px solid #cbd5e1; padding: 0.6rem; border-radius: 0.5rem; font-weight: bold; font-family: monospace; font-size: 1rem; }
+        .slider { -webkit-appearance: none; width: 100%; height: 6px; border-radius: 3px; background: #cbd5e1; outline: none; margin: 10px 0; }
+        .slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 24px; height: 24px; border-radius: 50%; background: #2563eb; cursor: pointer; border: 3px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .shape-preview { width: 100%; max-width: 280px; aspect-ratio: 1/1; background: #fff; border: 1px solid #e2e8f0; border-radius: 1rem; display: flex; align-items: end; justify-content: center; position: relative; overflow: hidden; margin: 10px auto; }
+        .label-text { font-size: 0.7rem; font-weight: 700; color: #64748b; margin-bottom: 0.2rem; display: block; text-transform: uppercase; }
+        .res-box { border-left: 4px solid #3b82f6; padding-left: 0.75rem; }
+    </style>
+</head>
+<body class="pb-10">
+
+    <header class="bg-slate-900 text-white p-4 sticky top-0 z-50 shadow-md">
+        <div class="flex justify-between items-center max-w-lg mx-auto">
+            <h1 class="text-lg font-black italic tracking-tighter">DRAINAGE PRO <span class="text-blue-400 text-sm">v3.1</span></h1>
+            <div class="px-3 py-1 rounded-full text-[10px] font-black bg-blue-600 uppercase">Interactive</div>
+        </div>
+    </header>
+
+    <nav class="bg-white border-b border-slate-200 sticky top-[60px] z-40 shadow-sm">
+        <div class="flex max-w-lg mx-auto">
+            <button onclick="switchTab('check')" id="tab-check" class="flex-1 py-3 text-sm font-bold tab-active">断面チェック</button>
+            <button onclick="switchTab('capacity')" id="tab-capacity" class="flex-1 py-3 text-sm font-bold text-slate-400">通水能力計算</button>
+        </div>
+    </nav>
+
+    <main class="p-4 max-w-lg mx-auto space-y-6">
+
+        <!-- --- Tab 1: 断面チェック (雨量から) --- -->
+        <section id="sect-check" class="space-y-4">
+            <div class="glass-card p-4">
+                <h2 class="text-xs font-black mb-4 border-l-4 border-blue-500 pl-2">1. 合理式入力 (降雨)</h2>
+                <div class="space-y-3">
+                    <div class="input-group">
+                        <div class="flex justify-between items-center"><span class="label-text">流出係数 C</span><input type="number" id="c1-num-c" step="0.01" class="w-20 text-right"></div>
+                        <input type="range" id="c1-inp-c" min="0.1" max="1.0" step="0.01" value="0.90" class="slider">
+                    </div>
+                    <div class="input-group">
+                        <div class="flex justify-between items-center"><span class="label-text">降雨強度 I (mm/h)</span><input type="number" id="c1-num-i" step="1" class="w-20 text-right"></div>
+                        <input type="range" id="c1-inp-i" min="10" max="250" step="1" value="50" class="slider">
+                    </div>
+                    <div class="input-group"><span class="label-text">流域面積 A (m²)</span><input type="number" id="c1-inp-a" value="1500"></div>
+                </div>
+            </div>
+
+            <div class="glass-card p-4">
+                <h2 class="text-xs font-black mb-4 border-l-4 border-green-500 pl-2">2. 水路断面設定</h2>
+                <div class="space-y-3">
+                    <select id="c1-type" class="mb-2">
+                        <option value="rect">矩形水路</option>
+                        <option value="trape">逆台形</option>
+                        <option value="circle">円形管路</option>
+                    </select>
+                    <div id="c1-ctrl-rect" class="grid grid-cols-2 gap-2">
+                        <div class="input-group"><span class="label-text">幅 B (m)</span><input type="number" id="c1-b" value="0.60" step="0.01"></div>
+                        <div class="input-group"><span class="label-text">高 H (m)</span><input type="number" id="c1-h" value="0.60" step="0.01"></div>
+                    </div>
+                    <div id="c1-ctrl-trape" class="hidden space-y-2">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="input-group"><span class="label-text">下幅 B1 (m)</span><input type="number" id="c1-b1" value="0.40" step="0.01"></div>
+                            <div class="input-group"><span class="label-text">上幅 B2 (m)</span><input type="number" id="c1-b2" value="0.80" step="0.01"></div>
+                        </div>
+                        <div class="input-group"><span class="label-text">高 H (m)</span><input type="number" id="c1-th" value="0.60" step="0.01"></div>
+                    </div>
+                    <div id="c1-ctrl-circle" class="hidden input-group">
+                        <span class="label-text">管径 D (m)</span><input type="number" id="c1-d" value="0.60" step="0.01">
+                    </div>
+                    <div class="input-group">
+                        <div class="flex justify-between items-center"><span class="label-text">勾配 S (%)</span><input type="number" id="c1-num-s" step="0.01" class="w-24 text-right"></div>
+                        <input type="range" id="c1-inp-s" min="0.1" max="10" step="0.1" value="1.0" class="slider">
+                    </div>
+                    <div class="input-group">
+                        <span class="label-text">粗度係数 n</span>
+                        <select id="c1-n-sel" class="text-xs mb-2">
+                            <option value="0.013">0.013 (コンクリート管)</option>
+                            <option value="0.015">0.015 (打設コンクリート)</option>
+                            <option value="0.010">0.010 (塩ビ管)</option>
+                            <option value="0.016">0.016 (高密度ポリエチレン管)</option>
+                            <option value="manual">★ 任意入力</option>
+                        </select>
+                        <input type="number" id="c1-n-man" value="0.013" step="0.001" class="hidden">
+                    </div>
+                </div>
+            </div>
+
+            <div class="shape-preview">
+                <svg id="c1-svg" width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+                    <path id="c1-svg-base" d="" fill="none" stroke="#64748b" stroke-width="2" />
+                    <path id="c1-svg-water" d="" fill="rgba(59, 130, 246, 0.6)" />
+                    <line id="c1-svg-line" x1="0" y1="0" x2="100" y2="0" stroke="#ef4444" stroke-width="0.5" stroke-dasharray="2" />
+                </svg>
+                <div class="absolute bottom-1 right-2 text-[8px] font-black text-slate-300 uppercase">Real-depth preview</div>
+            </div>
+            
+            <div class="glass-card p-6 bg-slate-50 border-b-8 border-blue-500">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="res-box"><p class="label-text">必要流量 Qr</p><p class="text-xl font-black font-mono" id="c1-res-qr">0.0000</p></div>
+                    <div class="res-box border-green-500"><p class="label-text">満流能力 Qfull</p><p class="text-xl font-black font-mono" id="c1-res-qmax">0.0000</p></div>
+                </div>
+                <div class="mt-4 pt-4 border-t border-slate-200 flex justify-between items-end">
+                    <div><p class="label-text">通水比 (Qr/Qfull)</p><p class="text-3xl font-black" id="c1-res-ratio">0.0%</p></div>
+                    <div id="c1-judge" class="px-4 py-2 rounded-lg font-black text-white text-sm">READY</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- --- Tab 2: 通水能力計算 (断面から) --- -->
+        <section id="sect-capacity" class="hidden space-y-4">
+            <div class="glass-card p-4">
+                <h2 class="text-xs font-black mb-4 border-l-4 border-indigo-500 pl-2">1. 断面寸法 (mm)</h2>
+                <div class="space-y-3">
+                    <select id="c2-type" class="mb-2">
+                        <option value="rect">矩形 [幅×高]</option>
+                        <option value="trape">逆台形 [下幅×上幅×高]</option>
+                        <option value="circle">円形 [直径]</option>
+                    </select>
+                    <div id="c2-ctrl-rect" class="grid grid-cols-2 gap-2">
+                        <div class="input-group"><span class="label-text">幅 B (mm)</span><input type="number" id="c2-b" value="600"></div>
+                        <div class="input-group"><span class="label-text">高 H (mm)</span><input type="number" id="c2-h" value="600"></div>
+                    </div>
+                    <div id="c2-ctrl-trape" class="hidden space-y-2">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="input-group"><span class="label-text">下幅 B1 (mm)</span><input type="number" id="c2-b1" value="400"></div>
+                            <div class="input-group"><span class="label-text">上幅 B2 (mm)</span><input type="number" id="c2-b2" value="800"></div>
+                        </div>
+                        <div class="input-group"><span class="label-text">高 H (mm)</span><input type="number" id="c2-th" value="600"></div>
+                    </div>
+                    <div id="c2-ctrl-circle" class="hidden input-group">
+                        <span class="label-text">直径 D (mm)</span><input type="number" id="c2-d" value="600">
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass-card p-4">
+                <h2 class="text-xs font-black mb-4 border-l-4 border-slate-500 pl-2">2. 水理条件</h2>
+                <div class="space-y-3">
+                    <div class="input-group">
+                        <div class="flex justify-between items-center"><span class="label-text">勾配 S (%)</span><input type="number" id="c2-num-s" step="0.01" class="w-24 text-right"></div>
+                        <input type="range" id="c2-inp-s" min="0.1" max="10" step="0.1" value="1.0" class="slider">
+                    </div>
+                    <div class="input-group">
+                        <span class="label-text">粗度係数 n</span>
+                        <select id="c2-n-sel" class="text-xs">
+                            <option value="0.013">0.013 (コンクリート管)</option>
+                            <option value="0.015">0.015 (打設コンクリート)</option>
+                            <option value="0.010">0.010 (塩ビ管)</option>
+                            <option value="0.016">0.016 (高密度ポリエチレン管)</option>
+                            <option value="manual">★ 任意入力</option>
+                        </select>
+                        <input type="number" id="c2-n-man" value="0.013" step="0.001" class="hidden mt-2">
+                    </div>
+                </div>
+            </div>
+
+            <div class="shape-preview">
+                <svg id="c2-svg" width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet">
+                    <path id="c2-svg-base" d="" fill="none" stroke="#64748b" stroke-width="2" />
+                    <path id="c2-svg-water" d="" fill="rgba(59, 130, 246, 0.6)" />
+                    <line id="c2-svg-line" x1="0" y1="0" x2="100" y2="0" stroke="#ef4444" stroke-width="1" stroke-dasharray="2" />
+                </svg>
+                <div class="absolute bottom-1 right-2 text-[8px] font-black text-indigo-300 uppercase">80% Depth preview</div>
+            </div>
+
+            <div class="glass-card p-6 bg-slate-900 text-white border-b-8 border-indigo-500">
+                <p class="label-text text-slate-400">8割水深 通水能力 Q(0.8H)</p>
+                <p class="text-4xl font-black font-mono mb-4 text-blue-400" id="c2-res-q">0.0000 <span class="text-sm font-normal text-white">m³/s</span></p>
+                <div class="grid grid-cols-2 gap-4 border-t border-slate-700 pt-4">
+                    <div><p class="label-text text-slate-400">平均流速 V</p><p class="font-bold text-xl" id="c2-res-v">0.00 m/s</p></div>
+                    <div><p class="label-text text-slate-400">計算水深 d</p><p class="font-bold text-xl" id="c2-res-d">0 mm</p></div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        const el = (id) => document.getElementById(id);
+
+        function switchTab(tab) {
+            const isCheck = tab === 'check';
+            el('sect-check').style.display = isCheck ? 'block' : 'none';
+            el('sect-capacity').style.display = isCheck ? 'none' : 'block';
+            el('tab-check').className = isCheck ? 'flex-1 py-3 text-sm font-bold tab-active' : 'flex-1 py-3 text-sm font-bold text-slate-400';
+            el('tab-capacity').className = !isCheck ? 'flex-1 py-3 text-sm font-bold tab-active' : 'flex-1 py-3 text-sm font-bold text-slate-400';
+            runAll();
+        }
+
+        // 共通：粗度設定
+        function setupN(selId, manId) {
+            const sel = el(selId);
+            sel.onchange = () => {
+                el(manId).className = (sel.value === 'manual') ? 'block mt-2' : 'hidden';
+                runAll();
+            };
+        }
+        setupN('c1-n-sel', 'c1-n-man');
+        setupN('c2-n-sel', 'c2-n-man');
+
+        // 共通：同期
+        function sync(sid, nid) {
+            el(nid).value = el(sid).value;
+            el(sid).oninput = () => { el(nid).value = el(sid).value; runAll(); };
+            el(nid).oninput = () => { el(sid).value = el(nid).value; runAll(); };
+        }
+        sync('c1-inp-c', 'c1-num-c');
+        sync('c1-inp-i', 'c1-num-i');
+        sync('c1-inp-s', 'c1-num-s');
+        sync('c2-inp-s', 'c2-num-s');
+
+        function runAll() {
+            calcCheck();
+            calcCapacity();
+        }
+
+        // SVG描画汎用関数
+        function updateSVG(idPrefix, type, dims, waterRatio) {
+            const base = el(idPrefix + '-svg-base');
+            const water = el(idPrefix + '-svg-water');
+            const line = el(idPrefix + '-svg-line');
+            
+            let pathD = "", waterD = "", lineY = 0;
+            const y0 = 90, sideMargin = 15, maxDrawH = 80, maxDrawW = 70;
+
+            if (type === 'rect') {
+                const {b, h} = dims;
+                const aspect = b / h;
+                let w_px, h_px;
+                if (aspect > 1) { w_px = maxDrawW; h_px = maxDrawW / aspect; }
+                else { h_px = maxDrawH; w_px = maxDrawH * aspect; }
+                const x0 = 50 - w_px/2;
+                pathD = `M ${x0},${y0-h_px} L ${x0},${y0} L ${x0+w_px},${y0} L ${x0+w_px},${y0-h_px}`;
+                waterD = `M ${x0},${y0-h_px*waterRatio} L ${x0},${y0} L ${x0+w_px},${y0} L ${x0+w_px},${y0-h_px*waterRatio} Z`;
+                lineY = y0 - h_px * waterRatio;
+            } else if (type === 'trape') {
+                const {b1, b2, h} = dims;
+                const maxB = Math.max(b1, b2);
+                const scale = maxDrawW / Math.max(maxB, h);
+                const w1 = b1*scale, w2 = b2*scale, hp = h*scale;
+                const xMid = 50;
+                const wt = w1 + (w2 - w1) * waterRatio;
+                pathD = `M ${xMid-w2/2},${y0-hp} L ${xMid-w1/2},${y0} L ${xMid+w1/2},${y0} L ${xMid+w2/2},${y0-hp}`;
+                waterD = `M ${xMid-wt/2},${y0-hp*waterRatio} L ${xMid-w1/2},${y0} L ${xMid+w1/2},${y0} L ${xMid+wt/2},${y0-hp*waterRatio} Z`;
+                lineY = y0 - hp * waterRatio;
+            } else {
+                const {d} = dims;
+                const r = 40;
+                pathD = `M 50,10 A 40,40 0 1,1 50,90 A 40,40 0 1,1 50,10`;
+                const ay = 50 + (r - (r * 2 * waterRatio));
+                const ang = Math.acos((r - (r * 2 * waterRatio)) / r);
+                const xL = 50 - r * Math.sin(ang), xR = 50 + r * Math.sin(ang);
+                waterD = `M ${xL},${ay} A 40,40 0 ${waterRatio > 0.5 ? 1 : 0},0 ${xR},${ay} Z`;
+                lineY = ay;
+            }
+
+            base.setAttribute('d', pathD);
+            water.setAttribute('d', waterD);
+            line.setAttribute('y1', lineY); line.setAttribute('y2', lineY);
+            if (waterRatio <= 0 || isNaN(waterRatio)) { water.setAttribute('d', ""); line.setAttribute('y1', -10); }
+        }
+
+        function calcCheck() {
+            const C = parseFloat(el('c1-num-c').value) || 0;
+            const I = parseFloat(el('c1-num-i').value) || 0;
+            const A_m2 = parseFloat(el('c1-inp-a').value) || 0;
+            const Qr = (1/360) * C * I * (A_m2/10000);
+
+            const type = el('c1-type').value;
+            const S = (parseFloat(el('c1-num-s').value) || 0) / 100;
+            const nSel = el('c1-n-sel').value;
+            const n = (nSel === 'manual') ? (parseFloat(el('c1-n-man').value) || 0.013) : parseFloat(nSel);
+
+            let Afull, Pfull, dims = {};
+            if (type === 'rect') {
+                el('c1-ctrl-rect').classList.remove('hidden'); el('c1-ctrl-trape').classList.add('hidden'); el('c1-ctrl-circle').classList.add('hidden');
+                dims.b = parseFloat(el('c1-b').value) || 0.1; dims.h = parseFloat(el('c1-h').value) || 0.1;
+                Afull = dims.b * dims.h; Pfull = dims.b + 2 * dims.h;
+            } else if (type === 'trape') {
+                el('c1-ctrl-rect').classList.add('hidden'); el('c1-ctrl-trape').classList.remove('hidden'); el('c1-ctrl-circle').classList.add('hidden');
+                dims.b1 = parseFloat(el('c1-b1').value) || 0.1; dims.b2 = parseFloat(el('c1-b2').value) || 0.1; dims.h = parseFloat(el('c1-th').value) || 0.1;
+                Afull = (dims.b1 + dims.b2) * dims.h / 2; Pfull = dims.b1 + 2 * Math.sqrt(Math.pow((dims.b2-dims.b1)/2, 2) + dims.h**2);
+            } else {
+                el('c1-ctrl-rect').classList.add('hidden'); el('c1-ctrl-trape').classList.add('hidden'); el('c1-ctrl-circle').classList.remove('hidden');
+                dims.d = parseFloat(el('c1-d').value) || 0.1;
+                Afull = Math.PI * (dims.d/2)**2; Pfull = Math.PI * dims.d;
+            }
+
+            const Rfull = Afull / Pfull;
+            const Vfull = (S > 0 && n > 0) ? (1/n) * Math.pow(Rfull, 2/3) * Math.pow(S, 0.5) : 0;
+            const Qfull = Afull * Vfull;
+            const ratio = Qfull > 0 ? (Qr / Qfull) * 100 : 0;
+
+            el('c1-res-qr').innerText = Qr.toFixed(4);
+            el('c1-res-qmax').innerText = Qfull.toFixed(4);
+            el('c1-res-ratio').innerText = ratio.toFixed(1) + "%";
+
+            // 可視化：簡易的にQ比から水深比を推定(等流計算の逆算は重いため近似)
+            let waterRatio = Math.min(ratio/100, 1);
+            updateSVG('c1', type, dims, waterRatio);
+
+            const judge = el('c1-judge');
+            if (ratio > 100) { judge.innerText = "OVER"; judge.className = "px-4 py-2 rounded-lg font-black bg-red-600 text-white text-sm"; }
+            else if (ratio > 80) { judge.innerText = "CAUTION"; judge.className = "px-4 py-2 rounded-lg font-black bg-orange-500 text-white text-sm"; }
+            else { judge.innerText = "SAFE"; judge.className = "px-4 py-2 rounded-lg font-black bg-green-500 text-white text-sm"; }
+        }
+
+        function calcCapacity() {
+            const type = el('c2-type').value;
+            const S = (parseFloat(el('c2-num-s').value) || 0) / 100;
+            const nSel = el('c2-n-sel').value;
+            const n = (nSel === 'manual') ? (parseFloat(el('c2-n-man').value) || 0.013) : parseFloat(nSel);
+
+            let A, P, h_calc, dims = {};
+            if (type === 'rect') {
+                el('c2-ctrl-rect').classList.remove('hidden'); el('c2-ctrl-trape').classList.add('hidden'); el('c2-ctrl-circle').classList.add('hidden');
+                dims.b = (parseFloat(el('c2-b').value) || 1) / 1000; dims.h = (parseFloat(el('c2-h').value) || 1) / 1000;
+                h_calc = dims.h * 0.8; A = dims.b * h_calc; P = dims.b + 2 * h_calc;
+            } else if (type === 'trape') {
+                el('c2-ctrl-rect').classList.add('hidden'); el('c2-ctrl-trape').classList.remove('hidden'); el('c2-ctrl-circle').classList.add('hidden');
+                dims.b1 = (parseFloat(el('c2-b1').value) || 1) / 1000; dims.b2 = (parseFloat(el('c2-b2').value) || 1) / 1000; dims.h = (parseFloat(el('c2-th').value) || 1) / 1000;
+                h_calc = dims.h * 0.8; const bt = dims.b1 + (dims.b2 - dims.b1) * 0.8;
+                A = (dims.b1 + bt) * h_calc / 2; P = dims.b1 + 2 * Math.sqrt(Math.pow((bt-dims.b1)/2, 2) + h_calc**2);
+            } else {
+                el('c2-ctrl-rect').classList.add('hidden'); el('c2-ctrl-trape').classList.add('hidden'); el('c2-ctrl-circle').classList.remove('hidden');
+                dims.d = (parseFloat(el('c2-d').value) || 1) / 1000;
+                h_calc = dims.d * 0.8; const r = dims.d / 2;
+                const theta = 2 * Math.acos((r - h_calc) / r);
+                A = (r**2 / 2) * (theta - Math.sin(theta)); P = r * theta;
+            }
+
+            const R = P > 0 ? A / P : 0;
+            const V = (S > 0 && n > 0) ? (1/n) * Math.pow(R, 2/3) * Math.pow(S, 0.5) : 0;
+            const Q = A * V;
+
+            el('c2-res-q').innerHTML = Q.toFixed(4) + ' <span class="text-sm font-normal text-white">m³/s</span>';
+            el('c2-res-v').innerText = V.toFixed(2) + " m/s";
+            el('c2-res-d').innerText = Math.round(h_calc*1000) + " mm";
+            
+            updateSVG('c2', type, dims, 0.8);
+        }
+
+        // 全入力要素にイベント登録
+        document.querySelectorAll('input, select').forEach(item => {
+            item.addEventListener('input', runAll);
+        });
+
+        window.onload = runAll;
+    </script>
+</body>
+</html>
