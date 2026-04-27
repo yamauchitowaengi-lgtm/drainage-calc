@@ -1,6 +1,6 @@
 {
-  "name": "現場計算ツール 統合版",
-  "short_name": "現場Pro",
+  "name": "DRAINAGE PRO v3.1",
+  "short_name": "排水設計Pro",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#1e293b",
